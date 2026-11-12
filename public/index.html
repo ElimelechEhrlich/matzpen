@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מצפן כספי</title>
+<meta name="theme-color" content="#0E6B5C">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="loginScreen" hidden>
+  <form id="loginForm">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M16 6 L20 16 L16 26 L12 16 Z" fill="var(--accent)"/><circle cx="16" cy="16" r="2.2" fill="var(--surface)"/></svg>מצפן</div>
+    <p>הכסף שלך, במבט אחד.</p>
+    <div class="field"><label for="pw">סיסמה</label><input id="pw" type="password" autocomplete="current-password" required></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn primary" type="submit">כניסה</button>
+    <button class="linkish" type="button" id="demoBtn" style="align-self:center">הצג נתוני דוגמה</button>
+  </form>
+</div>
+
+<!-- APP -->
+<div class="app" id="appScreen" hidden>
+  <aside class="rail">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M16 6 L20 16 L16 26 L12 16 Z" fill="var(--accent)"/><circle cx="16" cy="16" r="2.2" fill="var(--surface)"/></svg>מצפן</div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sync" id="syncInfo"></div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div><div class="hello" id="todayLabel"></div><h1 id="viewTitle">סקירה</h1></div>
+      <span class="demo-tag" id="demoTag" hidden>נתוני דוגמה · <button class="linkish" id="exitDemo" type="button">יציאה</button></span>
+    </header>
+
+    <section class="view" data-view="overview"></section>
+    <section class="view" data-view="tx" hidden>
+      <div class="card"><div class="chips" id="txChips"></div><div class="list" id="txList"></div></div>
+    </section>
+    <section class="view" data-view="savings" hidden></section>
+    <section class="view" data-view="accounts" hidden></section>
+  </main>
+
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/demo.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

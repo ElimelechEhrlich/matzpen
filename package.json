@@ -1,0 +1,19 @@
+{
+  "name": "matzpen",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env scripts/dev.js",
+    "sync": "node --env-file-if-exists=.env scripts/sync.js",
+    "gen-key": "node scripts/gen-key.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "israeli-bank-scrapers": "^6.13.0",
+    "pg": "^8.23.1"
+  }
+}

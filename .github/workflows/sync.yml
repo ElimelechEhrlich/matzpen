@@ -1,0 +1,33 @@
+name: sync
+
+on:
+  schedule:
+    - cron: '47 2 * * *'   # every day, ~05:00 in Israel
+  workflow_dispatch:
+    inputs:
+      connection_id:
+        description: 'Sync only this connection (empty = all)'
+        required: false
+
+concurrency:
+  group: sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run sync
+        env:
+          TZ: Asia/Jerusalem
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MASTER_KEY: ${{ secrets.MASTER_KEY }}
+          SYNC_CONNECTION_ID: ${{ inputs.connection_id }}

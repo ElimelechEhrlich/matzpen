@@ -1,0 +1,11 @@
+{
+  "name": "מצפן כספי",
+  "short_name": "מצפן",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2F5F4",
+  "theme_color": "#0E6B5C",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
