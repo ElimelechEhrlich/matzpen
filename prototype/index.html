@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מצפן כספי</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&display=swap">
+<style>
+/* Layout: app shell — side rail on desktop, bottom tab bar on phone; alert first, then forecast, then the lists */
+:root {
+  --bg: #F2F5F4; --surface: #FFFFFF; --sunk: #E9EFED; --ink: #10201E; --muted: #5A6B67; --line: #DAE3E0;
+  --accent: #0E6B5C; --accent-ink: #FFFFFF; --accent-soft: #DCEFEA;
+  --crit: #C2364B; --crit-soft: #FBE7EA; --warn: #A8650C; --warn-soft: #FBEFD9; --good: #1C8656; --good-soft: #DFF3E8;
+  --f-display: "Rubik", "Heebo", "Arial Hebrew", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans Hebrew", "Assistant", "Arial Hebrew", system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0C1413; --surface: #141F1D; --sunk: #1A2725; --ink: #E5EEEC; --muted: #93A49F; --line: #25332F;
+  --accent: #4FC2AC; --accent-ink: #062520; --accent-soft: #163029;
+  --crit: #FF7D8E; --crit-soft: #3A1B22; --warn: #F0B45A; --warn-soft: #362812; --good: #5BCB92; --good-soft: #15301F;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0C1413; --surface: #141F1D; --sunk: #1A2725; --ink: #E5EEEC; --muted: #93A49F; --line: #25332F;
+  --accent: #4FC2AC; --accent-ink: #062520; --accent-soft: #163029;
+  --crit: #FF7D8E; --crit-soft: #3A1B22; --warn: #F0B45A; --warn-soft: #362812; --good: #5BCB92; --good-soft: #15301F;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; display: inline-block; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.rail { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh; padding: 24px 16px; border-inline-start: none; border-inline-end: 1px solid var(--line); display: flex; flex-direction: column; gap: 28px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 700; font-size: 20px; }
+.brand svg { width: 30px; height: 30px; }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; background: transparent; border-radius: 10px; text-align: start; color: var(--muted); font-weight: 500; }
+.nav button svg { width: 20px; height: 20px; flex: none; }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--ink); }
+.nav .badge { margin-inline-start: auto; background: var(--crit); color: var(--surface); font-size: 11px; font-weight: 600; border-radius: 99px; padding: 1px 7px; }
+.sync { margin-top: auto; font-size: 12.5px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
+.sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); display: inline-block; margin-inline-end: 6px; }
+
+main { padding-block: 28px 48px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); max-width: 1120px; width: 100%; margin-inline: auto; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.top .hello { color: var(--muted); font-size: 14px; }
+.top h1 { font-size: 26px; font-weight: 600; }
+.demo-tag { font-size: 12px; color: var(--warn); background: var(--warn-soft); padding: 4px 10px; border-radius: 99px; font-weight: 500; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; min-width: 0; }
+.card h2 { font-size: 17px; font-weight: 600; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.card-head .sub { color: var(--muted); font-size: 13px; }
+
+/* critical alert */
+.alert { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; background: var(--crit-soft); border: 1px solid color-mix(in srgb, var(--crit) 35%, transparent); border-radius: var(--r); padding: 18px 20px; }
+.alert .icon { width: 40px; height: 40px; border-radius: 12px; background: var(--crit); color: var(--surface); display: grid; place-items: center; }
+.alert .icon svg { width: 22px; height: 22px; }
+.alert h2 { font-size: 18px; font-weight: 600; color: var(--ink); }
+.alert p { margin: 4px 0 12px; color: var(--ink); max-width: 62ch; }
+.alert .math { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.alert .math b { color: var(--ink); font-size: 16px; font-family: var(--f-display); font-weight: 600; }
+.alert .math .neg b { color: var(--crit); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 10px; font-weight: 500; font-size: 14px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn:hover { filter: brightness(0.97); }
+.done-note { display: flex; gap: 10px; align-items: center; color: var(--good); font-weight: 500; }
+
+/* summary row */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat .label { font-size: 12.5px; color: var(--muted); }
+.stat .value { font-family: var(--f-display); font-size: 22px; font-weight: 600; }
+.stat .hint { font-size: 12px; color: var(--muted); }
+.stat .value.crit { color: var(--crit); } .stat .value.good { color: var(--good); }
+
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+
+/* chart */
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; padding: 6px 10px; border-radius: 8px; white-space: nowrap; transform: translate(50%, -110%); opacity: 0; transition: opacity .12s; }
+.legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 6px; vertical-align: -1px; }
+
+/* lists */
+.list { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row .ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--sunk); font-family: var(--f-display); font-weight: 600; font-size: 14px; color: var(--muted); }
+.row .t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .s { font-size: 12.5px; color: var(--muted); }
+.row .amt { font-weight: 600; text-align: start; }
+.amt.out { color: var(--ink); } .amt.in { color: var(--good); }
+.pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.pill.crit { background: var(--crit-soft); color: var(--crit); } .pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.good { background: var(--good-soft); color: var(--good); } .pill.neutral { background: var(--sunk); color: var(--muted); }
+
+/* duplicate cards */
+.dup { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.dup + .dup { margin-top: 10px; }
+.dup .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dup .pair div { background: var(--sunk); border-radius: 9px; padding: 8px 10px; font-size: 13px; }
+.dup .pair b { display: block; font-size: 15px; }
+.dup .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.dup .head strong { font-weight: 600; }
+
+/* savings */
+.savings-total { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.savings-total .big { font-family: var(--f-display); font-size: 34px; font-weight: 700; color: var(--good); }
+.offers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.offer { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+.offer .cat { font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.offer h3 { font-size: 16px; font-weight: 600; }
+.compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; font-size: 13px; }
+.compare > div { background: var(--sunk); border-radius: 9px; padding: 8px 10px; }
+.compare b { display: block; font-size: 16px; font-family: var(--f-display); font-weight: 600; }
+.compare .arrow { color: var(--muted); }
+.offer .save { color: var(--good); font-weight: 600; }
+.offer p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+/* accounts */
+.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.acct { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+.acct .kind { font-size: 12px; color: var(--muted); }
+.acct .name { font-weight: 600; font-size: 16px; }
+.acct .bal { font-family: var(--f-display); font-size: 22px; font-weight: 600; }
+.acct .meta { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.acct.add { border-style: dashed; align-items: center; justify-content: center; color: var(--muted); min-height: 140px; background: transparent; }
+
+/* filter chips */
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 5px 12px; font-size: 13px; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.view[hidden] { display: none !important; }
+.view { display: flex; flex-direction: column; gap: 22px; }
+.empty { color: var(--muted); font-size: 14px; padding: 16px 0; }
+
+/* mobile */
+.tabbar { display: none; }
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .rail { display: none; }
+  main { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 110px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .offers { grid-template-columns: minmax(0, 1fr); }
+  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; inset: auto 0 0 0; z-index: 20; background: var(--surface); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .tabbar button { border: 0; background: transparent; padding: 9px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; color: var(--muted); position: relative; }
+  .tabbar button svg { width: 22px; height: 22px; }
+  .tabbar button[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .tabbar .badge { position: absolute; top: 5px; inset-inline-end: calc(50% - 20px); background: var(--crit); color: var(--surface); font-size: 10px; border-radius: 99px; padding: 0 5px; }
+  .top h1 { font-size: 22px; }
+}
+@media (max-width: 420px) { .stat .value { font-size: 19px; } .alert { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="app" dir="rtl" lang="he">
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M16 6 L20 16 L16 26 L12 16 Z" fill="var(--accent)"/><circle cx="16" cy="16" r="2.2" fill="var(--surface)"/></svg>
+      מצפן
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sync">
+      <span><span class="dot"></span>כל החשבונות מסונכרנים</span>
+      <span>עדכון אחרון: היום 06:00</span>
+    </div>
+  </aside>
+
+  <main>
+    <header class="top">
+      <div>
+        <div class="hello">יום חמישי, 12 בנובמבר 2026</div>
+        <h1 id="viewTitle">סקירה</h1>
+      </div>
+      <span class="demo-tag">אב־טיפוס · נתוני דוגמה</span>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="view" data-view="overview">
+      <div class="alert" id="alert">
+        <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 8v5M12 16.5v.5"/><path d="M10.3 3.9 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+        <div id="alertBody">
+          <h2>מחר יורדים 1,000 ₪, ויש בעו״ש רק 500 ₪</h2>
+          <p>הוראת הקבע לארנונה תחויב מחר, 13.11. בלי פעולה החשבון ייכנס למינוס של 500 ₪ עד שהמשכורת תיכנס ב־15.11, וזה יעלה בערך 6 ₪ ריבית.</p>
+          <div class="math">
+            <span>יתרה עכשיו<br><b class="num">₪500</b></span>
+            <span>חיוב מחר<br><b class="num">−₪1,000</b></span>
+            <span class="neg">צפי אחרי החיוב<br><b class="num">−₪500</b></span>
+          </div>
+          <div class="actions">
+            <button class="btn primary" data-fix="savings">העבר 600 ₪ מהחיסכון</button>
+            <button class="btn" data-fix="delay">בקש לדחות ל־16.11</button>
+            <button class="btn ghost" data-fix="ignore">אני אטפל בזה</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>תחזית יתרה ל־30 יום</h2><span class="sub">חיובים קבועים וצפויים + הוצאה יומית ממוצעת</span></div>
+          <div class="chart-wrap" id="chartWrap"><svg id="chart" viewBox="0 0 640 240" role="img" aria-label="תחזית יתרת העו״ש ל־30 הימים הקרובים"></svg><div class="tip" id="tip"></div></div>
+          <div class="legend"><span><i style="background:var(--accent)"></i>יתרה צפויה</span><span><i style="background:var(--crit)"></i>מתחת לאפס</span><span><i style="background:var(--muted)"></i>חיוב או הכנסה גדולים</span></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>צפוי לרדת בקרוב</h2><span class="sub">14 הימים הבאים</span></div>
+          <div class="list" id="upcoming"></div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h2>חיובים שנראים כפולים</h2><span class="sub" id="dupCount"></span></div>
+          <div id="dups"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>אפשר לחסוך</h2><button class="btn ghost" data-go="savings">לכל ההצעות</button></div>
+          <div class="savings-total"><span class="big num" id="saveTotalSmall"></span><span class="sub" style="color:var(--muted)">בשנה, מ־4 הצעות</span></div>
+          <div class="list" id="saveMini"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRANSACTIONS -->
+    <section class="view" data-view="tx" hidden>
+      <div class="card">
+        <div class="chips" id="txChips"></div>
+        <div class="list" id="txList"></div>
+      </div>
+    </section>
+
+    <!-- SAVINGS -->
+    <section class="view" data-view="savings" hidden>
+      <div class="card">
+        <div class="savings-total"><span class="big num" id="saveTotal"></span><span style="color:var(--muted)">חיסכון שנתי אפשרי לפי ההוצאות הקבועות שלך</span></div>
+        <div class="offers" id="offers"></div>
+      </div>
+      <p style="color:var(--muted);font-size:13px;margin:0;max-width:70ch">ההצעות כאן הן דוגמה. בגרסה האמיתית המערכת תזהה את המנויים והחיובים הקבועים מהתנועות, ותשווה אותם למחירים עדכניים ממקורות שתבחר.</p>
+    </section>
+
+    <!-- ACCOUNTS -->
+    <section class="view" data-view="accounts" hidden>
+      <div class="accounts" id="accounts"></div>
+      <div class="card">
+        <div class="card-head"><h2>איך החיבור עובד</h2></div>
+        <p style="margin:0;color:var(--muted);max-width:68ch">שרת פרטי שלך מתחבר פעם ביום לאתרי הבנק וחברות האשראי ומושך את התנועות. פרטי ההתחברות נשמרים מוצפנים אצלך בלבד, והאפליקציה רק קוראת נתונים ולא מבצעת העברות.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<script>
+(() => {
+  const ils = (n, sign) => { const s = Math.abs(Math.round(n)).toLocaleString('he-IL'); const pre = n < 0 ? '−' : (sign && n > 0 ? '+' : ''); return pre + '₪' + s; };
+  const $ = (s) => document.querySelector(s);
+
+  const ICONS = {
+    overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>',
+    tx: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>',
+    savings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3S9.5 10.5 12 11s4.5 1.3 4.5 3.2-2 3.3-4.5 3.3-4.5-1.4-4.5-3"/></svg>',
+    accounts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3"/></svg>'
+  };
+  const VIEWS = [
+    { id: 'overview', label: 'סקירה' },
+    { id: 'tx', label: 'תנועות' },
+    { id: 'savings', label: 'חיסכון' },
+    { id: 'accounts', label: 'חשבונות' }
+  ];
+
+  // ---------- sample data ----------
+  const accounts = [
+    { kind: 'בנק · עו״ש', name: 'חשבון עו״ש ראשי', bal: 500, meta: 'מסגרת אשראי ₪5,000', status: 'good' },
+    { kind: 'בנק · חיסכון', name: 'פיקדון נזיל', bal: 7400, meta: 'ניתן למשיכה מיידית', status: 'good' },
+    { kind: 'כרטיס אשראי', name: 'כאל ·· 4417', bal: -2860, meta: 'חיוב ב־10.12', status: 'good' },
+    { kind: 'כרטיס אשראי', name: 'מקס ·· 9032', bal: -1940, meta: 'חיוב ב־2.12', status: 'good' },
+    { kind: 'כרטיס אשראי', name: 'ישראכרט ·· 2281', bal: -615, meta: 'חיוב ב־2.12', status: 'warn', note: 'צריך להתחבר מחדש' }
+  ];
+
+  // forecast: day 0 = 12.11.2026
+  const big = { 1: [-1000, 'ארנונה · הוראת קבע'], 3: [9200, 'משכורת'], 5: [-3400, 'שכר דירה'], 8: [-410, 'חשמל'], 12: [-650, 'ביטוח רכב'], 20: [-1940, 'חיוב מקס'], 20.5: [-615, 'חיוב ישראכרט'], 22: [-180, 'ועד בית'], 28: [-2860, 'חיוב כאל'] };
+  const days = []; let b = 500;
+  const base = new Date(2026, 10, 12);
+  for (let d = 0; d <= 30; d++) {
+    const ev = [];
+    if (d > 0) b -= 85;
+    [d, d + 0.5].forEach(k => { if (big[k]) { b += big[k][0]; ev.push(big[k]); } });
+    const dt = new Date(base); dt.setDate(base.getDate() + d);
+    days.push({ d, bal: b, ev, date: dt });
+  }
+  const fmtDate = (dt) => dt.getDate() + '.' + (dt.getMonth() + 1);
+
+  const upcoming = [
+    { t: 'ארנונה', s: 'הוראת קבע · מחר', amt: -1000, tag: ['crit', 'אין כיסוי'] },
+    { t: 'משכורת', s: 'צפויה ב־15.11', amt: 9200 },
+    { t: 'שכר דירה', s: 'העברה קבועה · 17.11', amt: -3400 },
+    { t: 'חברת החשמל', s: 'חשבון דו־חודשי · 20.11', amt: -410, tag: ['warn', 'גבוה ב־18%'] },
+    { t: 'ביטוח רכב', s: 'חידוש שנתי · 24.11', amt: -650 }
+  ];
+
+  let dups = [
+    { id: 1, m: 'סופר השכונה', a: 312.5, why: 'אותו סכום, אותו בית עסק, בהפרש של 4 דקות', x: ['כאל ·· 4417', '11.11 · 19:42'], y: ['כאל ·· 4417', '11.11 · 19:46'] },
+    { id: 2, m: 'מנוי סטרימינג מוזיקה', a: 21.9, why: 'אותו מנוי משולם בשני כרטיסים', x: ['מקס ·· 9032', 'כל 3 בחודש'], y: ['כאל ·· 4417', 'כל 5 בחודש'] },
+    { id: 3, m: 'חניון עירוני', a: 18, why: 'חיוב כפול על אותה חניה', x: ['ישראכרט ·· 2281', '09.11 · 08:12'], y: ['ישראכרט ·· 2281', '09.11 · 08:12'] }
+  ];
+
+  const offers = [
+    { cat: 'סלולר', title: 'שתי שורות סלולר', now: 89, alt: 39, unit: 'לחודש לשורה', qty: 2, note: 'אתה משלם 89 ₪ לשורה. יש מסלולי 5G בלי הגבלת גלישה בכ־39 ₪ אצל ספקים אחרים. ניוד המספר בחינם.' },
+    { cat: 'ביטוח', title: 'ביטוח רכב, חידוש ב־24.11', now: 3480, alt: 2790, unit: 'לשנה', qty: 1, yearly: true, note: 'ההצעה שקיבלת גבוהה ב־20% מהממוצע לרכב ולגיל שלך. כדאי לבקש 2–3 הצעות לפני החידוש.' },
+    { cat: 'בנק', title: 'עמלות עו״ש', now: 31, alt: 0, unit: 'לחודש', qty: 1, note: 'שילמת 31 ₪ בחודש על עמלות פעולה. במסלול דיגיטלי או בבקשה להנחה אפשר להוריד אותן כמעט לגמרי.' },
+    { cat: 'מנויים', title: 'טלוויזיה ושני שירותי סטרימינג', now: 154, alt: 79, unit: 'לחודש', qty: 1, note: 'יש לך חבילת טלוויזיה וגם שני שירותי סטרימינג עם תוכן דומה. ויתור על אחד מהם חוסך את רוב הסכום.' }
+  ];
+  offers.forEach(o => o.yearSave = o.yearly ? (o.now - o.alt) : (o.now - o.alt) * 12 * o.qty);
+  const saveSum = offers.reduce((s, o) => s + o.yearSave, 0);
+
+  const tx = [
+    { t: 'סופר השכונה', s: 'כאל · 11.11', c: 'מזון', amt: -312.5, flag: 'dup' },
+    { t: 'סופר השכונה', s: 'כאל · 11.11', c: 'מזון', amt: -312.5, flag: 'dup' },
+    { t: 'תחנת דלק', s: 'מקס · 11.11', c: 'רכב', amt: -265 },
+    { t: 'בית מרקחת', s: 'ישראכרט · 10.11', c: 'בריאות', amt: -78.9 },
+    { t: 'החזר מס הכנסה', s: 'עו״ש · 10.11', c: 'הכנסות', amt: 1240 },
+    { t: 'מסעדה', s: 'כאל · 09.11', c: 'בילוי', amt: -186 },
+    { t: 'חניון עירוני', s: 'ישראכרט · 09.11', c: 'רכב', amt: -18, flag: 'dup' },
+    { t: 'חניון עירוני', s: 'ישראכרט · 09.11', c: 'רכב', amt: -18, flag: 'dup' },
+    { t: 'חברת סלולר', s: 'מקס · 08.11', c: 'קבועות', amt: -178 },
+    { t: 'מנוי סטרימינג מוזיקה', s: 'כאל · 05.11', c: 'קבועות', amt: -21.9, flag: 'dup' },
+    { t: 'מנוי סטרימינג מוזיקה', s: 'מקס · 03.11', c: 'קבועות', amt: -21.9, flag: 'dup' },
+    { t: 'חנות בגדים', s: 'כאל · 02.11', c: 'קניות', amt: -349 },
+    { t: 'העברה מאמא', s: 'עו״ש · 01.11', c: 'הכנסות', amt: 500 }
+  ];
+
+  // ---------- nav ----------
+  let view = 'overview';
+  const navHTML = (cls) => VIEWS.map(v => `<button type="button" data-go="${v.id}" ${v.id === view ? 'aria-current="page"' : ''}>${ICONS[v.id]}<span>${v.label}</span>${v.id === 'overview' && dups.length ? `<span class="badge">${dups.length + 1}</span>` : ''}</button>`).join('');
+  function renderNav() { $('#nav').innerHTML = navHTML(); $('#tabbar').innerHTML = navHTML(); }
+  function go(id) {
+    view = id;
+    document.querySelectorAll('.view').forEach(s => s.hidden = s.dataset.view !== id);
+    $('#viewTitle').textContent = VIEWS.find(v => v.id === id).label;
+    renderNav();
+    window.scrollTo({ top: 0 });
+  }
+  document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go); });
+
+  // ---------- stats ----------
+  function renderStats(fixed) {
+    const minDay = days.reduce((m, x) => x.bal < m.bal ? x : m, days[0]);
+    const cards = accounts.filter(a => a.kind.startsWith('כרטיס')).reduce((s, a) => s + a.bal, 0);
+    const items = [
+      { label: 'יתרה בעו״ש', value: ils(fixed ? 1100 : 500), hint: 'עודכן היום 06:00' },
+      { label: 'נקודת השפל בחודש', value: ils(fixed ? minDay.bal + 600 : minDay.bal), cls: (fixed ? minDay.bal + 600 : minDay.bal) < 0 ? 'crit' : '', hint: 'ב־' + fmtDate(minDay.date) },
+      { label: 'חיובי אשראי פתוחים', value: ils(cards), hint: '3 כרטיסים' },
+      { label: 'חיסכון אפשרי בשנה', value: ils(saveSum), cls: 'good', hint: '4 הצעות' }
+    ];
+    $('#stats').innerHTML = items.map(i => `<div class="stat"><span class="label">${i.label}</span><span class="value num ${i.cls || ''}">${i.value}</span><span class="hint">${i.hint}</span></div>`).join('');
+  }
+
+  // ---------- chart ----------
+  function renderChart(shift) {
+    const svg = $('#chart'); const W = 640, H = 240, P = { l: 12, r: 58, t: 16, b: 30 };
+    const data = days.map(x => ({ ...x, v: x.bal + (shift || 0) }));
+    const vals = data.map(x => x.v);
+    const step = 2000;
+    const lo = Math.floor(Math.min(0, ...vals) / step) * step, hi = Math.ceil(Math.max(...vals) / step) * step;
+    // RTL: day 0 on the right
+    const X = (d) => W - P.r - (d / 30) * (W - P.l - P.r);
+    const Y = (v) => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
+    let g = '';
+    for (let v = lo; v <= hi; v += step) {
+      g += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="${v === 0 ? 1.5 : 1}" ${v === 0 ? '' : 'stroke-dasharray="2 4"'}/>`;
+      g += `<text x="${W - P.r + 8}" y="${Y(v) + 4}" font-size="11" fill="var(--muted)" text-anchor="start" direction="ltr" style="font-variant-numeric:tabular-nums;unicode-bidi:plaintext">${v === 0 ? '0' : (v < 0 ? '−' : '') + Math.abs(v / 1000) + 'K'}</text>`;
+    }
+    [0, 7, 14, 21, 28].forEach(d => { g += `<text x="${X(d)}" y="${H - 8}" font-size="11" fill="var(--muted)" text-anchor="middle">${d === 0 ? 'היום' : fmtDate(data[d].date)}</text>`; });
+    // step line (balance changes in steps)
+    let path = '';
+    data.forEach((x, i) => { path += (i === 0 ? `M${X(0)},${Y(x.v)}` : ` H${X(x.d)} V${Y(x.v)}`); });
+    const area = path + ` H${X(30)} V${Y(lo)} H${X(0)} Z`;
+    const zeroY = Y(0);
+    g += `<defs>
+      <linearGradient id="fillG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient>
+      <clipPath id="above"><rect x="0" y="0" width="${W}" height="${zeroY}"/></clipPath>
+      <clipPath id="below"><rect x="0" y="${zeroY}" width="${W}" height="${H}"/></clipPath>
+    </defs>`;
+    g += `<path d="${area}" fill="url(#fillG)" clip-path="url(#above)"/>`;
+    g += `<path d="${area}" fill="var(--crit)" fill-opacity=".14" clip-path="url(#below)"/>`;
+    g += `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" clip-path="url(#above)"/>`;
+    g += `<path d="${path}" fill="none" stroke="var(--crit)" stroke-width="2.4" stroke-linejoin="round" clip-path="url(#below)"/>`;
+    data.forEach(x => { if (x.ev.some(e => Math.abs(e[0]) >= 900)) g += `<circle cx="${X(x.d)}" cy="${Y(x.v)}" r="3.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/>`; });
+    const minD = data.reduce((m, x) => x.v < m.v ? x : m, data[0]);
+    g += `<circle cx="${X(minD.d)}" cy="${Y(minD.v)}" r="5" fill="${minD.v < 0 ? 'var(--crit)' : 'var(--accent)'}" stroke="var(--surface)" stroke-width="2"/>`;
+    g += `<line id="hair" x1="0" x2="0" y1="${P.t}" y2="${H - P.b}" stroke="var(--muted)" stroke-width="1" opacity="0"/>`;
+    g += `<rect id="hit" x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}" fill="transparent"/>`;
+    svg.innerHTML = g;
+
+    const tip = $('#tip'), hair = svg.querySelector('#hair'), wrap = $('#chartWrap');
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) / r.width * W;
+      const d = Math.max(0, Math.min(30, Math.round((W - P.r - sx) / (W - P.l - P.r) * 30)));
+      const x = data[d]; const px = X(d) / W * r.width;
+      hair.setAttribute('x1', X(d)); hair.setAttribute('x2', X(d)); hair.setAttribute('opacity', .5);
+      tip.innerHTML = `${fmtDate(x.date)} · <span class="num">${ils(x.v)}</span>${x.ev.length ? '<br>' + x.ev.map(e => e[1] + ' ' + ils(e[0], true)).join('<br>') : ''}`;
+      tip.style.right = 'auto'; tip.style.left = Math.min(Math.max(px - tip.offsetWidth, 0), r.width - tip.offsetWidth) + 'px';
+      tip.style.top = (Y(x.v) / H * r.height) + 'px'; tip.style.transform = 'translateY(-115%)'; tip.style.opacity = 1;
+    };
+    svg.querySelector('#hit').addEventListener('pointermove', move);
+    svg.querySelector('#hit').addEventListener('pointerleave', () => { tip.style.opacity = 0; hair.setAttribute('opacity', 0); });
+  }
+
+  // ---------- lists ----------
+  function renderUpcoming() {
+    $('#upcoming').innerHTML = upcoming.map(u => `<div class="row"><div class="ic">${u.t[0]}</div><div style="min-width:0"><div class="t">${u.t}</div><div class="s">${u.s}${u.tag ? ` <span class="pill ${u.tag[0]}">${u.tag[1]}</span>` : ''}</div></div><div class="amt num ${u.amt > 0 ? 'in' : 'out'}">${ils(u.amt, true)}</div></div>`).join('');
+  }
+  function renderDups() {
+    $('#dupCount').textContent = dups.length ? `${dups.length} לבדיקה · ${ils(dups.reduce((s, d) => s + d.a, 0))}` : '';
+    $('#dups').innerHTML = dups.length ? dups.map(d => `<div class="dup">
+      <div class="head"><strong>${d.m}</strong><span class="num" style="font-weight:600">₪${d.a.toLocaleString('he-IL', { minimumFractionDigits: d.a % 1 ? 2 : 0 })}</span></div>
+      <div class="s" style="color:var(--muted);font-size:13px">${d.why}</div>
+      <div class="pair"><div><b>${d.x[0]}</b>${d.x[1]}</div><div><b>${d.y[0]}</b>${d.y[1]}</div></div>
+      <div class="actions"><button class="btn primary" data-dup="${d.id}" data-act="dispute">פתח בירור מול חברת האשראי</button><button class="btn ghost" data-dup="${d.id}" data-act="ok">זה בסדר</button></div>
+    </div>`).join('') : '<div class="empty">אין חיובים כפולים לבדיקה. נבדוק שוב בסנכרון הבא.</div>';
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-dup]'); if (!b) return;
+    const id = +b.dataset.dup; const card = b.closest('.dup');
+    if (b.dataset.act === 'dispute') { card.querySelector('.actions').innerHTML = '<span class="done-note">✓ נשמר מכתב בירור מוכן לשליחה. סמנו לבדיקה חוזרת בעוד 7 ימים.</span>'; setTimeout(() => { dups = dups.filter(d => d.id !== id); renderDups(); renderNav(); }, 1800); }
+    else { dups = dups.filter(d => d.id !== id); renderDups(); renderNav(); }
+  });
+
+  function renderSavings() {
+    $('#saveTotal').textContent = ils(saveSum); $('#saveTotalSmall').textContent = ils(saveSum);
+    $('#saveMini').innerHTML = offers.map(o => `<div class="row"><div class="ic">${o.cat[0]}</div><div style="min-width:0"><div class="t">${o.title}</div><div class="s">${o.cat}</div></div><div class="amt num in">${ils(o.yearSave)}</div></div>`).join('');
+    $('#offers').innerHTML = offers.map(o => `<div class="offer">
+      <span class="cat">${o.cat}</span><h3>${o.title}</h3>
+      <div class="compare"><div>היום<b class="num">₪${o.now.toLocaleString('he-IL')}</b>${o.unit}</div><span class="arrow">←</span><div>אפשרי<b class="num">₪${o.alt.toLocaleString('he-IL')}</b>${o.unit}</div></div>
+      <p>${o.note}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="save">חיסכון <span class="num">${ils(o.yearSave)}</span> בשנה</span><button class="btn">פרטים</button></div>
+    </div>`).join('');
+  }
+
+  const cats = ['הכל', 'כפולים', 'מזון', 'רכב', 'קבועות', 'הכנסות'];
+  let cat = 'הכל';
+  function renderTx() {
+    $('#txChips').innerHTML = cats.map(c => `<button type="button" class="chip" data-cat="${c}" aria-pressed="${c === cat}">${c}</button>`).join('');
+    const list = tx.filter(t => cat === 'הכל' || (cat === 'כפולים' ? t.flag === 'dup' : t.c === cat));
+    $('#txList').innerHTML = list.map(t => `<div class="row"><div class="ic">${t.t[0]}</div><div style="min-width:0"><div class="t">${t.t}</div><div class="s">${t.s} · ${t.c}${t.flag === 'dup' ? ' <span class="pill crit">חשד לכפל</span>' : ''}</div></div><div class="amt num ${t.amt > 0 ? 'in' : 'out'}">${ils(t.amt, true)}</div></div>`).join('') || '<div class="empty">אין תנועות בקטגוריה הזו.</div>';
+  }
+  document.addEventListener('click', (e) => { const c = e.target.closest('[data-cat]'); if (c) { cat = c.dataset.cat; renderTx(); } });
+
+  function renderAccounts() {
+    $('#accounts').innerHTML = accounts.map(a => `<div class="acct"><span class="kind">${a.kind}</span><span class="name">${a.name}</span><span class="bal num" style="color:${a.bal < 0 ? 'var(--ink)' : 'var(--ink)'}">${ils(a.bal)}</span><div class="meta"><span>${a.meta}</span>${a.note ? `<span class="pill warn">${a.note}</span>` : '<span class="pill good">מחובר</span>'}</div></div>`).join('') + '<button class="acct add" type="button">+ חיבור חשבון או כרטיס</button>';
+  }
+
+  // ---------- alert actions ----------
+  document.addEventListener('click', (e) => {
+    const f = e.target.closest('[data-fix]'); if (!f) return;
+    const body = $('#alertBody'); const alert = $('#alert');
+    const msg = { savings: ['הועברו 600 ₪ מהפיקדון הנזיל לעו״ש', 'אחרי חיוב הארנונה מחר תישאר יתרה של 100 ₪. המשכורת צפויה ב־15.11.'],
+                  delay: ['נשמרה תזכורת לבקש דחייה', 'בגרסה המלאה נכין לך את הפרטים לפנייה לרשות המקומית.'],
+                  ignore: ['ההתראה הוסתרה', 'נזכיר לך שוב מחר ב־08:00 אם היתרה עדיין לא מכסה את החיוב.'] }[f.dataset.fix];
+    alert.style.background = 'var(--good-soft)'; alert.style.borderColor = 'color-mix(in srgb, var(--good) 35%, transparent)';
+    alert.querySelector('.icon').style.background = 'var(--good)';
+    alert.querySelector('.icon').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+    body.innerHTML = `<h2>${msg[0]}</h2><p style="margin:4px 0 0">${msg[1]}</p>`;
+    if (f.dataset.fix === 'savings') { renderStats(true); renderChart(600); }
+  });
+
+  renderNav(); renderStats(); renderChart(); renderUpcoming(); renderDups(); renderSavings(); renderTx(); renderAccounts();
+})();
+</script>
+</body>
+</html>
