@@ -59,6 +59,7 @@
     $('#demoTag').hidden = !demo;
     await load();
     watchOtp();
+    refreshPushPrompt();
   }
 
   async function load() {
@@ -341,6 +342,12 @@
       <div class="field"><label for="s_thr">התראה כשהיתרה הצפויה יורדת מתחת ל־(₪)</label><input id="s_thr" type="number" step="100" value="0"></div>
       <div class="field"><label for="s_days">ימי תחזית</label><input id="s_days" type="number" min="7" max="90" value="${data.forecast.days.length - 1}"></div>
       <button class="btn primary" type="submit">שמירה</button></form></div>`}`;
+    if (!demo) {
+      const st = await pushState();
+      el.insertAdjacentHTML('beforeend', `<div class="card"><div class="card-head"><h2>התראות לטלפון</h2><span class="sub">${st === 'on' ? '<span class="pill good">פעיל במכשיר הזה</span>' : '<span class="pill neutral">כבוי במכשיר הזה</span>'}</span></div>
+        <p style="margin:0 0 12px;color:var(--muted)">התראה כשהבנק שולח קוד SMS בזמן סנכרון.${st === 'ios-install' ? ' באייפון צריך קודם להוסיף את מצפן למסך הבית ולפתוח משם.' : ''}${st === 'denied' ? ' ההתראות חסומות בהגדרות האתר בדפדפן.' : ''}</p>
+        <div class="actions">${st === 'off' ? '<button class="btn primary" type="button" data-push-on>הפעל התראות</button>' : ''}${st === 'on' ? '<button class="btn" type="button" data-push-test>שלח התראת ניסיון</button>' : ''}</div><div class="err"></div></div>`);
+    }
     const sf = $('#setForm');
     if (sf) {
       api('settings').then((r) => { $('#s_thr').value = r.settings.lowBalanceThreshold; }).catch(() => {});
@@ -414,6 +421,55 @@
       box.innerHTML = '<h2>הקוד נשלח</h2><p>הסנכרון ממשיך. הנתונים יתעדכנו בעוד כמה דקות.</p>';
       setTimeout(() => { el.hidden = true; el.dataset.keep = ''; otpSent.delete(id); load(); }, 90000);
     } catch (err) { box.querySelector('.err').textContent = err.message; }
+  });
+
+  // ---------- phone notifications ----------
+  const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone;
+  let swReg = null;
+  if ('serviceWorker' in navigator && !demo) {
+    navigator.serviceWorker.register('/sw.js').then((r) => { swReg = r; refreshPushPrompt(); }).catch(() => {});
+    navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.type === 'open') watchOtp(); });
+  }
+  const b64ToBytes = (b64) => { const s = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+  async function pushState() {
+    if (!pushSupported) return isIOS && !standalone ? 'ios-install' : 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    const sub = swReg && (await swReg.pushManager.getSubscription().catch(() => null));
+    return sub && Notification.permission === 'granted' ? 'on' : 'off';
+  }
+  async function enablePush() {
+    if (!swReg) swReg = await navigator.serviceWorker.ready;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') throw new Error('ההרשאה להתראות לא ניתנה. אפשר להפעיל אותה בהגדרות האתר בדפדפן.');
+    const { publicKey } = await api('push');
+    let sub = await swReg.pushManager.getSubscription();
+    if (!sub) sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(publicKey) });
+    await api('push', { method: 'POST', body: { subscription: sub.toJSON() } });
+  }
+  async function refreshPushPrompt() {
+    const el = $('#pushPrompt'); if (!el || demo || !token) return;
+    const st = await pushState();
+    let dismissed = false; try { dismissed = localStorage.getItem('matzpen.pushDismissed') === '1'; } catch {}
+    if (st === 'on' || st === 'unsupported' || dismissed) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = `<div class="otp" style="background:var(--surface);border-color:var(--line)">
+      <h2>קבל התראה לטלפון כשהבנק שולח קוד</h2>
+      <p>${st === 'ios-install' ? 'באייפון: לחץ על כפתור השיתוף ובחר "הוסף למסך הבית", ופתח את מצפן משם. אחרי זה יופיע כאן כפתור להפעלה.' : st === 'denied' ? 'ההתראות חסומות לאתר הזה. פתח את הגדרות האתר בדפדפן (סמל המנעול ליד הכתובת) ואפשר התראות.' : 'כשהבנק ישלח SMS תקבל התראה. לחיצה עליה פותחת את תיבת הקוד, לא משנה באיזה טאב או אפליקציה אתה נמצא.'}</p>
+      <div class="actions">${st === 'off' ? '<button class="btn primary" type="button" data-push-on>הפעל התראות</button>' : ''}<button class="btn ghost" type="button" data-push-dismiss>לא עכשיו</button></div>
+      <div class="err"></div></div>`;
+  }
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-push-on]')) {
+      const box = e.target.closest('.otp, .card');
+      try { await enablePush(); toast('ההתראות הופעלו במכשיר הזה'); refreshPushPrompt(); if (view === 'accounts') renderAccounts(); }
+      catch (err) { const er = box?.querySelector('.err'); if (er) er.textContent = err.message; else toast(err.message); }
+    }
+    if (e.target.closest('[data-push-dismiss]')) { try { localStorage.setItem('matzpen.pushDismissed', '1'); } catch {} $('#pushPrompt').hidden = true; }
+    if (e.target.closest('[data-push-test]')) {
+      try { const r = await api('push', { method: 'POST', body: { action: 'test' } }); toast(r.sent ? 'נשלחה התראת ניסיון' : 'אין מכשיר רשום. הפעל קודם התראות.'); } catch (err) { toast(err.message); }
+    }
   });
 
   // ---------- boot ----------

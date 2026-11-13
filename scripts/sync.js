@@ -8,6 +8,7 @@ import { getProvider } from '../lib/providers.js';
 import { saveScrapeResult, markSyncError } from '../lib/store.js';
 import { requestOtp, waitForOtp, clearOtp, loadSessionState, saveSessionState } from '../lib/otp.js';
 import { wrapLogin, restoreDeviceState } from '../lib/bank-login.js';
+import { notify } from '../lib/push.js';
 
 const { createScraper } = createRequire(import.meta.url)('israeli-bank-scrapers');
 
@@ -54,7 +55,12 @@ async function main() {
         },
       });
       wrapLogin(scraper, {
-        onOtpNeeded: async () => { await requestOtp(c.id); return waitForOtp(c.id); },
+        onOtpNeeded: async () => {
+          await requestOtp(c.id);
+          const sent = await notify({ title: `${provider?.name || c.label} שלח לך קוד ב־SMS`, body: 'לחץ כאן והקלד את הקוד. יש לך 4 דקות.', url: `/?otp=${c.id}`, tag: `otp-${c.id}`, urgent: true });
+          console.log(`  … נשלחה התראה ל־${sent} מכשירים`);
+          return waitForOtp(c.id);
+        },
         onDeviceState: (state) => { deviceState = state; },
       });
       const result = await scraper.scrape(decrypt(c.credentials)).finally(() => clearOtp(c.id).catch(() => {}));
