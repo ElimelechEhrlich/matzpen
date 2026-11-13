@@ -52,6 +52,22 @@ window.MATZPEN_DEMO = (() => {
       { description: 'עמלות ניהול חשבון', kind: 'bank', amount: -31, dayOfMonth: 1, yearly: 372 },
       { description: 'מנוי סטרימינג מוזיקה', kind: 'card', provider: 'visaCal', amount: -21.9, dayOfMonth: 5, yearly: 263 },
     ],
+    savings: [
+      { id: 'cellular', name: 'סלולר', merchants: ['חברת סלולר'], monthly: 178, target: 58, yearlySave: 1440, units: { label: 'שורות', value: 2 },
+        tip: 'מסלולי 5G בלי הגבלת גלישה עולים היום בערך 30–50 ₪ לשורה. מעבר חברה עם ניוד מספר הוא בחינם ולוקח בערך יום.',
+        basis: 'המבצע הזול ביותר שנמצא: 29 ₪ לשורה לחודש',
+        deals: [
+          { provider: 'ספק א׳ (דוגמה)', plan: '5G ללא הגבלה', price: 29, unit: '₪ לשורה', url: '', details: 'המחיר מובטח ל־12 חודשים, אחר כך 49 ₪.' },
+          { provider: 'ספק ב׳ (דוגמה)', plan: '5G 1000GB', price: 35, unit: '₪ לשורה', url: '', details: 'כולל 200 דקות לחו״ל.' },
+        ], dealsCheckedAt: day(-3) + 'T07:00:00Z' },
+      { id: 'streaming', name: 'מנויי סטרימינג', merchants: ['חבילת טלוויזיה', 'מנוי סטרימינג מוזיקה'], monthly: 141, target: 119, yearlySave: 263, units: null,
+        tip: 'הרבה אנשים מחזיקים כמה שירותי סטרימינג במקביל. אפשר להחזיק שירות אחד בכל פעם ולעבור ביניהם כל חודש או חודשיים.', basis: '2 שירותים פעילים', deals: [] },
+      { id: 'insurance', name: 'ביטוחים', merchants: ['ביטוח רכב'], monthly: 290, target: 247, yearlySave: 522, units: null,
+        tip: 'כדאי לבקש 2–3 הצעות לפני כל חידוש. באתר הממשלתי "הר הביטוח" רואים את כל הפוליסות שלכם ואם יש כפל ביטוחים.', basis: 'חיסכון אפשרי של כ־15%', deals: [] },
+      { id: 'fees', name: 'עמלות ודמי כרטיס', merchants: ['עמלות ניהול חשבון', 'דמי כרטיס'], monthly: 43, target: 13, yearlySave: 361, units: null,
+        tip: 'אפשר לבקש מהבנק מסלול עמלות דיגיטלי או פטור, ומחברת האשראי לבטל את דמי הכרטיס. הבקשה הזו מתקבלת ברוב המקרים.', basis: 'חיסכון אפשרי של כ־70%', deals: [] },
+    ],
+    dealsUpdatedAt: day(-3) + 'T07:00:00Z',
     recent,
     connections: [
       { id: 1, provider: 'hapoalim', providerName: 'בנק הפועלים', kind: 'bank', label: 'עו״ש משפחתי', enabled: true, last_status: 'ok', last_sync_at: day(0) + 'T04:00:00Z', accounts: [{ accountNumber: '12-345', balance: 500 }] },

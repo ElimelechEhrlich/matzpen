@@ -1,0 +1,24 @@
+name: deals
+
+on:
+  schedule:
+    - cron: '23 4 * * 0'   # Sundays, ~07:00 in Israel
+  workflow_dispatch:
+
+jobs:
+  deals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: '1'
+      - run: npm run deals
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

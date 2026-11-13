@@ -9,10 +9,12 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.js",
     "sync": "node --env-file-if-exists=.env scripts/sync.js",
+    "deals": "node --env-file-if-exists=.env scripts/deals.js",
     "gen-key": "node scripts/gen-key.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "israeli-bank-scrapers": "^6.13.0",
     "pg": "^8.23.1"
   }

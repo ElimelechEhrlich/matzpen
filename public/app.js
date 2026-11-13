@@ -74,13 +74,13 @@
     savings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3S9.5 10.5 12 11s4.5 1.3 4.5 3.2-2 3.3-4.5 3.3-4.5-1.4-4.5-3"/></svg>',
     accounts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h3"/></svg>',
   };
-  const VIEWS = [{ id: 'overview', label: 'סקירה' }, { id: 'tx', label: 'תנועות' }, { id: 'savings', label: 'קבועות' }, { id: 'accounts', label: 'חשבונות' }];
+  const VIEWS = [{ id: 'overview', label: 'סקירה' }, { id: 'tx', label: 'תנועות' }, { id: 'savings', label: 'חיסכון' }, { id: 'accounts', label: 'חשבונות' }];
 
   function renderNav() {
     const badge = (data?.alerts.length || 0) + (data?.duplicates.length || 0);
     const errs = (data?.connections || []).filter((c) => c.last_status === 'error').length;
     const html = VIEWS.map((v) => `<button type="button" data-go="${v.id}" ${v.id === view ? 'aria-current="page"' : ''}>${ICONS[v.id]}<span>${v.label}</span>${
-      v.id === 'overview' && badge ? `<span class="badge">${badge}</span>` : v.id === 'accounts' && errs ? `<span class="badge">${errs}</span>` : ''}</button>`).join('');
+      v.id === 'overview' && badge ? `<span class="badge">${badge}</span>` : v.id === 'accounts' && errs ? `<span class="badge">${errs}</span>` : v.id === 'savings' && data?.savings?.length ? `<span class="badge" style="background:var(--good)">${data.savings.length}</span>` : ''}</button>`).join('');
     $('#nav').innerHTML = html; $('#tabbar').innerHTML = html;
   }
   function go(id) {
@@ -141,7 +141,10 @@
         <div class="card"><div class="card-head"><h2>צפוי בקרוב</h2><span class="sub">14 הימים הבאים</span></div><div class="list">${
           data.upcoming.length ? data.upcoming.map((u) => row(u.label, `${dm(u.date)} · ${u.kind === 'card' ? 'חיוב כרטיס' : 'חיוב קבוע'}`, u.amount)).join('') : '<div class="empty">לא זוהו חיובים צפויים בשבועיים הקרובים.</div>'}</div></div>
       </div>
-      <div class="card"><div class="card-head"><h2>חיובים שנראים כפולים</h2><span class="sub">${data.duplicates.length ? `${data.duplicates.length} לבדיקה · ${ils(data.duplicates.reduce((s, d) => s + d.amount, 0))}` : ''}</span></div><div id="dups">${dupsHTML()}</div></div>`;
+      <div class="card"><div class="card-head"><h2>חיובים שנראים כפולים</h2><span class="sub">${data.duplicates.length ? `${data.duplicates.length} לבדיקה · ${ils(data.duplicates.reduce((s, d) => s + d.amount, 0))}` : ''}</span></div><div id="dups">${dupsHTML()}</div></div>
+      ${(data.savings || []).length ? `<div class="card"><div class="card-head"><h2>אפשר לחסוך</h2><button class="btn ghost" type="button" data-go="savings">לכל ההצעות</button></div>
+        <div class="savings-total"><span class="big num">${ils(data.savings.reduce((s, x) => s + x.yearlySave, 0))}</span><span style="color:var(--muted)">בשנה</span></div>
+        <div class="list">${data.savings.slice(0, 4).map((x) => `<div class="row"><div class="ic">${esc(x.name[0])}</div><div style="min-width:0"><div class="t">${esc(x.name)}</div><div class="s">${esc(x.merchants[0] || '')} · היום ${ils(x.monthly)} לחודש</div></div><div class="amt num in">${ils(x.yearlySave)}</div></div>`).join('')}</div></div>` : ''}`;
     drawChart();
   }
 
@@ -237,14 +240,42 @@
   // ---------- recurring ----------
   function renderSavings() {
     const el = $('[data-view="savings"]');
+    const sv = data.savings || [];
     const subs = data.subscriptions;
-    const total = subs.reduce((s, x) => s + x.yearly, 0);
+    const total = sv.reduce((s, x) => s + x.yearlySave, 0);
+    const dealsLine = data.dealsUpdatedAt
+      ? `מבצעים עדכניים נבדקו ב־${new Date(data.dealsUpdatedAt).toLocaleDateString('he-IL')}`
+      : 'המחירים להשוואה הם הערכה. כדי לקבל מבצעים עדכניים מהרשת כל שבוע, הוסף ANTHROPIC_API_KEY (ראה README).';
+    const card = (s) => `<div class="offer" data-saving="${s.id}">
+      <span class="cat">${esc(s.name)}</span>
+      <h3>${esc(s.merchants.join(' · '))}</h3>
+      <div class="compare"><div>היום<b class="num">${ils(s.monthly)}</b>לחודש</div><span class="arrow">←</span><div>אפשרי<b class="num">${ils(s.target)}</b>לחודש</div></div>
+      <p>${esc(s.tip)}</p>
+      <p style="font-size:12.5px">${esc(s.basis)}</p>
+      ${s.units ? `<div class="field" style="flex-direction:row;align-items:center;gap:8px"><label for="u_${s.id}" style="margin:0">מספר ${esc(s.units.label)} בחיוב:</label><input id="u_${s.id}" type="number" min="1" max="19" value="${s.units.value}" style="width:72px" data-units="${s.id}"></div>` : ''}
+      ${s.deals.length ? `<div class="list">${s.deals.map((d) => `<div class="row" style="grid-template-columns:minmax(0,1fr) auto"><div style="min-width:0"><div class="t" style="white-space:normal">${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">${esc(d.provider)} · ${esc(d.plan)}</a>` : `${esc(d.provider)} · ${esc(d.plan)}`}</div><div class="s">${esc(d.details)}</div></div><div class="amt num">${esc(d.price)} ${esc(d.unit)}</div></div>`).join('')}</div>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="save">חיסכון של כ־<span class="num">${ils(s.yearlySave)}</span> בשנה</span><button class="btn ghost" type="button" data-saving-dismiss>לא רלוונטי</button></div>
+    </div>`;
     el.innerHTML = `<div class="card">
-      <div class="savings-total"><span class="big num" style="color:var(--ink)">${ils(total)}</span><span style="color:var(--muted)">בשנה על ${subs.length} חיובים קבועים</span></div>
-      <div class="list">${subs.map((s) => row(s.description, `${s.kind === 'card' ? 'בכרטיס' : 'בבנק'} · בערך ב־${s.dayOfMonth} לחודש · ${ils(s.yearly)} בשנה`, s.amount)).join('') || '<div class="empty">החיובים הקבועים יזוהו אחרי 3 חודשים של נתונים.</div>'}</div>
-    </div>
-    <p style="color:var(--muted);font-size:13px;margin:0;max-width:70ch">כאן מופיעים חיובים שחוזרים כל חודש. בשלב הבא נוסיף השוואה למחירים עדכניים (סלולר, ביטוח, מנויים) והמלצות לחיסכון.</p>`;
+        <div class="savings-total"><span class="big num">${ils(total)}</span><span style="color:var(--muted)">חיסכון שנתי אפשרי${sv.length ? ` מ־${sv.length} הצעות` : ''}</span></div>
+        ${sv.length ? `<div class="offers">${sv.map(card).join('')}</div>` : '<div class="empty">לא נמצאו חיובים יקרים מהמקובל. הבדיקה מתעדכנת בכל סנכרון.</div>'}
+        <p style="color:var(--muted);font-size:12.5px;margin:14px 0 0">${esc(dealsLine)}</p>
+      </div>
+      <div class="card"><div class="card-head"><h2>כל החיובים הקבועים</h2><span class="sub num">${ils(subs.reduce((s, x) => s + x.yearly, 0))} בשנה</span></div>
+        <div class="list">${subs.map((s) => row(s.description, `${s.kind === 'card' ? 'בכרטיס' : 'בבנק'} · בערך ב־${s.dayOfMonth} לחודש · ${ils(s.yearly)} בשנה`, s.amount)).join('') || '<div class="empty">החיובים הקבועים יזוהו אחרי 3 חודשים של נתונים.</div>'}</div>
+      </div>`;
   }
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-saving-dismiss]'); if (!b) return;
+    const id = b.closest('[data-saving]').dataset.saving;
+    try { if (!demo) await api('dismiss', { method: 'POST', body: { key: 'saving:' + id } }); data.savings = data.savings.filter((s) => s.id !== id); renderSavings(); toast('ההצעה הוסתרה'); } catch (err) { toast(err.message); }
+  });
+  document.addEventListener('change', async (e) => {
+    const inp = e.target.closest('[data-units]'); if (!inp) return;
+    const v = Math.max(1, Math.min(19, Math.round(Number(inp.value) || 1)));
+    if (demo) { const s = data.savings.find((x) => x.id === inp.dataset.units); const per = s.target / s.units.value; s.units.value = v; s.target = Math.round(per * v); s.yearlySave = Math.max(0, (s.monthly - s.target) * 12); renderSavings(); return; }
+    try { const cur = (await api('settings')).settings.savingsUnits || {}; await api('settings', { method: 'POST', body: { savingsUnits: { ...cur, [inp.dataset.units]: v } } }); await load(); } catch (err) { toast(err.message); }
+  });
 
   // ---------- accounts ----------
   async function ensureProviders() {
