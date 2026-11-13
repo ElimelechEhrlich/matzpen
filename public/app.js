@@ -370,11 +370,16 @@
 
   // ---------- one-time codes ----------
   let otpPollUntil = 0, otpTimer = null, otpSent = new Set();
-  function watchOtp(minutes = 8) {
-    if (demo) return;
-    otpPollUntil = Date.now() + minutes * 60000;
-    if (!otpTimer) pollOtp();
+  function watchOtp(minutes = 10) {
+    if (demo || !token) return;
+    otpPollUntil = Math.max(otpPollUntil, Date.now() + minutes * 60000);
+    clearTimeout(otpTimer); // check right away (timers are frozen while the tab is in the background)
+    pollOtp();
   }
+  // coming back from another tab or app: check immediately
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) watchOtp(); });
+  window.addEventListener('focus', () => watchOtp());
+  window.addEventListener('pageshow', () => watchOtp());
   async function pollOtp() {
     otpTimer = null;
     if (Date.now() > otpPollUntil || !token) return;
@@ -382,7 +387,7 @@
       const { waiting } = await api('otp');
       renderOtp(waiting.filter((w) => !otpSent.has(w.id)));
     } catch { /* keep polling */ }
-    otpTimer = setTimeout(pollOtp, document.hidden ? 10000 : 4000);
+    otpTimer = setTimeout(pollOtp, document.hidden ? 15000 : 3000);
   }
   function renderOtp(list) {
     const el = $('#otpBanner');
