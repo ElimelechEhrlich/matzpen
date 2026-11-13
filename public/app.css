@@ -186,3 +186,9 @@ main { padding-block: 28px 48px; padding-left: max(24px, env(safe-area-inset-lef
 .toast { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 50; max-width: calc(100% - 32px); }
 .settings-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; align-items: end; }
 .copybox { white-space: pre-wrap; background: var(--sunk); border-radius: 9px; padding: 10px; font-size: 13px; }
+
+.otp { background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: var(--r); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.otp h2 { font-size: 18px; }
+.otp p { margin: 0; color: var(--muted); }
+.otp form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.otp input { font: inherit; font-size: 22px; letter-spacing: .3em; text-align: center; width: 10ch; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); direction: ltr; }

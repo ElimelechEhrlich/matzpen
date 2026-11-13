@@ -57,6 +57,7 @@
     $('#loginScreen').hidden = true; $('#appScreen').hidden = false;
     $('#demoTag').hidden = !demo;
     await load();
+    watchOtp();
   }
 
   async function load() {
@@ -184,7 +185,7 @@
     if (e.target.closest('[data-logout]')) logout();
     if (e.target.closest('[data-retry]')) load();
     if (e.target.closest('[data-sync]')) {
-      try { const r = await api('sync', { method: 'POST', body: {} }); toast(r.started ? 'הסנכרון התחיל. זה לוקח כמה דקות.' : r.reason); } catch (err) { toast(err.message); }
+      try { const r = await api('sync', { method: 'POST', body: {} }); toast(r.started ? 'הסנכרון התחיל. זה לוקח כמה דקות.' : r.reason); if (r.started) watchOtp(); } catch (err) { toast(err.message); }
     }
   });
 
@@ -319,7 +320,7 @@
         const btn = e.submitter; btn.disabled = true;
         try {
           if (c) { await api('connections?id=' + c.id, { method: 'PATCH', body: { label, credentials } }); toast('הפרטים עודכנו. הם ישמשו בסנכרון הבא.'); }
-          else { const r = await api('connections', { method: 'POST', body: { provider: p.id, label, credentials } }); toast(r.sync?.started ? 'החשבון חובר. הסנכרון הראשון התחיל ולוקח כמה דקות.' : 'החשבון חובר. הנתונים ימשכו בסנכרון היומי.'); }
+          else { const r = await api('connections', { method: 'POST', body: { provider: p.id, label, credentials } }); watchOtp(); toast(r.sync?.started ? 'החשבון חובר. הסנכרון הראשון התחיל ולוקח כמה דקות.' : 'החשבון חובר. הנתונים ימשכו בסנכרון היומי.'); }
           accountsMode = { screen: 'list' }; await load();
         } catch (err) { $('#connErr').textContent = err.message; btn.disabled = false; }
       });
@@ -365,6 +366,48 @@
       if (demo) { data.connections = data.connections.filter((x) => x.id !== id); renderAccounts(); return; }
       try { await api('connections?id=' + id, { method: 'DELETE' }); toast('החיבור נמחק'); await load(); } catch (err) { toast(err.message); }
     }
+  });
+
+  // ---------- one-time codes ----------
+  let otpPollUntil = 0, otpTimer = null, otpSent = new Set();
+  function watchOtp(minutes = 8) {
+    if (demo) return;
+    otpPollUntil = Date.now() + minutes * 60000;
+    if (!otpTimer) pollOtp();
+  }
+  async function pollOtp() {
+    otpTimer = null;
+    if (Date.now() > otpPollUntil || !token) return;
+    try {
+      const { waiting } = await api('otp');
+      renderOtp(waiting.filter((w) => !otpSent.has(w.id)));
+    } catch { /* keep polling */ }
+    otpTimer = setTimeout(pollOtp, document.hidden ? 10000 : 4000);
+  }
+  function renderOtp(list) {
+    const el = $('#otpBanner');
+    if (!list.length) { if (!el.dataset.keep) el.hidden = true; return; }
+    if (el.dataset.showing === list.map((w) => w.id).join(',')) return; // don't wipe what the user is typing
+    el.dataset.showing = list.map((w) => w.id).join(','); el.dataset.keep = '';
+    el.hidden = false;
+    el.innerHTML = list.map((w) => `<div class="otp" data-otp="${w.id}">
+      <h2>${esc(w.providerName)} שלח לך קוד ב־SMS</h2>
+      <p>הקלד אותו כאן. הסנכרון מחכה לו עד 4 דקות. (${esc(w.label)})</p>
+      <form><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" aria-label="קוד אימות" required><button class="btn primary" type="submit">שליחה</button></form>
+      <div class="err"></div></div>`).join('');
+    el.querySelector('input')?.focus();
+  }
+  document.addEventListener('submit', async (e) => {
+    const box = e.target.closest('[data-otp]'); if (!box) return;
+    e.preventDefault();
+    const id = +box.dataset.otp; const code = box.querySelector('input').value.trim();
+    try {
+      await api('otp', { method: 'POST', body: { connectionId: id, code } });
+      otpSent.add(id);
+      const el = $('#otpBanner'); el.dataset.keep = '1'; el.dataset.showing = '';
+      box.innerHTML = '<h2>הקוד נשלח</h2><p>הסנכרון ממשיך. הנתונים יתעדכנו בעוד כמה דקות.</p>';
+      setTimeout(() => { el.hidden = true; el.dataset.keep = ''; otpSent.delete(id); load(); }, 90000);
+    } catch (err) { box.querySelector('.err').textContent = err.message; }
   });
 
   // ---------- boot ----------
