@@ -62,7 +62,13 @@
   async function load() {
     if (demo) data = window.MATZPEN_DEMO;
     else {
-      try { data = await api('dashboard'); } catch (e) { if (token) toast(e.message); return; }
+      try { data = await api('dashboard'); } catch (e) {
+        if (!token) return;
+        $('#viewTitle').textContent = 'סקירה';
+        document.querySelectorAll('.view').forEach((s) => (s.hidden = s.dataset.view !== 'overview'));
+        $('[data-view="overview"]').innerHTML = `<div class="card empty-state"><h2>לא הצלחתי לטעון את הנתונים</h2><p>${esc(e.message === 'Failed to fetch' ? 'אין חיבור לאינטרנט או לשרת.' : e.message)}</p><div class="actions"><button class="btn primary" type="button" data-retry>נסה שוב</button><button class="btn ghost" type="button" data-logout>יציאה</button></div></div>`;
+        return;
+      }
     }
     render();
   }
@@ -176,6 +182,7 @@
     }
     if (e.target.closest('[data-alert-done]')) { $('#alertBody').innerHTML = '<h2>מעולה</h2><p style="margin:4px 0 0">התחזית תתעדכן בסנכרון הבא.</p>'; }
     if (e.target.closest('[data-logout]')) logout();
+    if (e.target.closest('[data-retry]')) load();
     if (e.target.closest('[data-sync]')) {
       try { const r = await api('sync', { method: 'POST', body: {} }); toast(r.started ? 'הסנכרון התחיל. זה לוקח כמה דקות.' : r.reason); } catch (err) { toast(err.message); }
     }
