@@ -45,7 +45,7 @@
    - `APP_PASSWORD`: הסיסמה שתקליד כדי להיכנס לאפליקציה
    - `GH_REPO` = `ElimelechEhrlich/matzpen`, ו־`GH_TOKEN`: לא חובה. בלעדיהם הכפתור "סנכרן עכשיו" לא עובד. ה־token הוא fine-grained token עם הרשאת **Actions: Read and write** לריפו הזה בלבד.
 4. **GitHub Actions:** בריפו נכנסים ל־Settings → Secrets and variables → Actions ומוסיפים `DATABASE_URL` ו־`MASTER_KEY` עם אותם ערכים.
-5. **מבצעים עדכניים (לא חובה):** יוצרים מפתח API ב־[platform.claude.com](https://platform.claude.com) ומוסיפים אותו ב־GitHub Secrets בשם `ANTHROPIC_API_KEY`. החיפוש רץ כל יום ראשון, ואפשר להפעיל אותו גם ידנית דרך Actions → deals → Run workflow. העלות היא בערך כמה סנטים לחיפוש. בלי המפתח, ההשוואה נעשית מול מחירים מקובלים שמוגדרים מראש ב־`lib/savings.js`.
+5. **מבצעים עדכניים (לא חובה):** יוצרים מפתח API ב־[platform.claude.com](https://platform.claude.com) ומוסיפים אותו ב־GitHub Secrets בשם `ANTHROPIC_API_KEY`. החיפוש רץ כל יום ראשון, ואפשר להפעיל אותו גם ידנית דרך Actions → deals → Run workflow. העלות משוערת בכמה דולרים בחודש (תלוי במספר הקטגוריות). אפשר להגביל אותה ב־Console של Anthropic. בלי המפתח, ההשוואה נעשית מול מחירים מקובלים שמוגדרים מראש ב־`lib/savings.js`.
 6. נכנסים לאפליקציה, עוברים ל**חשבונות → חיבור בנק או כרטיס אשראי**, בוחרים ספק וממלאים את פרטי ההתחברות.
 
 ## הרצה מקומית
