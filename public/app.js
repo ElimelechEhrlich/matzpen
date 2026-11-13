@@ -20,6 +20,7 @@
   let view = 'overview';
   let txFilter = 'all';
   let accountsMode = { screen: 'list' }; // list | pick | form
+  let otpPollUntil = 0, otpTimer = null, otpSent = new Set();
 
   function toast(msg) {
     const t = $('#toast'); t.textContent = msg; t.hidden = false;
@@ -107,6 +108,7 @@
       ? `<span><span class="dot" style="${errs ? 'background:var(--warn)' : ''}"></span>${errs ? `${errs} חיבורים דורשים טיפול` : 'כל החשבונות מסונכרנים'}</span><span>עדכון אחרון: ${new Date(data.lastSync).toLocaleString('he-IL', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>${demo ? '' : '<button class="linkish" type="button" data-sync>סנכרן עכשיו</button><button class="linkish" type="button" data-logout>יציאה</button>'}`
       : (demo ? '' : '<button class="linkish" type="button" data-logout>יציאה</button>');
     renderNav(); renderView();
+    if (!demo) renderOtp(data.connections.filter((c) => c.otp_waiting && !otpSent.has(c.id)).map((c) => ({ id: c.id, label: c.label, providerName: c.providerName })));
   }
   function renderView() {
     if (!data) return;
@@ -369,7 +371,6 @@
   });
 
   // ---------- one-time codes ----------
-  let otpPollUntil = 0, otpTimer = null, otpSent = new Set();
   function watchOtp(minutes = 10) {
     if (demo || !token) return;
     otpPollUntil = Math.max(otpPollUntil, Date.now() + minutes * 60000);
