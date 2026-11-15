@@ -1,8 +1,9 @@
 name: deals
 
 on:
-  schedule:
-    - cron: '23 4 * * 0'   # Sundays, ~07:00 in Israel
+  # Automatic runs are paused. To turn them back on, restore:
+  # schedule:
+  #   - cron: '23 4 * * 0'   # Sundays, ~07:00 in Israel
   workflow_dispatch:
 
 jobs:

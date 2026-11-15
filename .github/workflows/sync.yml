@@ -1,8 +1,9 @@
 name: sync
 
 on:
-  schedule:
-    - cron: '47 2 * * *'   # every day, ~05:00 in Israel
+  # Automatic runs are paused. To turn them back on, restore:
+  # schedule:
+  #   - cron: '47 2 * * *'   # every day, ~05:00 in Israel
   workflow_dispatch:
     inputs:
       connection_id:
